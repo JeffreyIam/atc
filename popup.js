@@ -1,11 +1,14 @@
-// var siteKey = ''
-
-function redirect() {
- chrome.tabs.create({url: 'http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Page-HeaderInfo'});
+function redirect(key) {
+ chrome.tabs.create(
+  {url: 'http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Page-HeaderInfo/' + key}
+  )
 }
 
-$(document).ready(function() {
-  $("#atc").click(function() {
-    redirect()
-  });
-});
+addEventListener('DOMContentLoaded', () => {
+  const siteKeyInput = document.querySelector('#siteKey')
+  const siteKeyButton = document.querySelector('#atc')
+
+  siteKeyButton.addEventListener('click', () => {
+    redirect(siteKeyInput.value)
+  })
+})

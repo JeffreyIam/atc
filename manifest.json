@@ -1,33 +1,31 @@
 {
-    "name": "ATC",
-    "version": "0.1",
-    "manifest_version": 2,
-    "browser_action":{
-    "default_popup":"popup.html"
+  "name": "ATC",
+  "version": "0.1",
+  "manifest_version": 2,
+  "browser_action":{
+  "default_popup":"popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Page-HeaderInfo/*"
+      ],
+      "js": ["jquery-1.12.1.js", "createCart.js"],
+      "css": ["bootstrap.css"]
     },
-    "content_scripts": [
-        {
-            "matches": [
-                "*://*.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Page-HeaderInfo"
-            ],
-            "js": ["jquery-1.12.1.js", "createCart.js"],
-            "css": ["bootstrap.css"]
-        },
-        {
-            "matches": [
-                "*://*.example.net/*"
-            ],
-            "js": ["jquery-1.12.1.js", "addToCart.js"],
-            "css": ["bootstrap.css"]
-        }
-    ]
-    ,
-    "background": {
-        "scripts": ["auto.js"],
-        "persistent": true
-    },
-    "permissions": [
-        "<all_urls>", "storage"
-    ]
+    {
+      "matches": [
+        "*://*.example.net/*"
+      ],
+      "js": ["jquery-1.12.1.js", "addToCart.js"],
+      "css": ["bootstrap.css"]
+    }
+  ],
+  "background": {
+    "scripts": ["auto.js"],
+    "persistent": true
+  },
+  "permissions": [
+    "<all_urls>", "storage"
+  ]
 }
-
