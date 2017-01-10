@@ -20,13 +20,12 @@ const grabLink = (url) => {
         let pageUrl = value.loc[0]
         if(pageUrl.indexOf('shoes') > -1) {
           request(pageUrl, (error, res, body) => {
-            console.log(res)
             if(body !== undefined && body.indexOf('data-sitekey') > -1) {
               console.log('Sitekey found on: ' + pageUrl)
               let sitekey = body.split('data-sitekey="')[1].split('"><')[0]
-              console.log(sitekey)
+              console.log('--------------' + sitekey + '--------------')
             } else if(body === undefined){
-              console.log(pageUrl + ' body is undefined')
+              console.log(pageUrl + ' is oos')
             }
           })
         }
@@ -35,7 +34,7 @@ const grabLink = (url) => {
   })
 }
 
-const sitemapList = ['']
+const sitemapList = ['http://www.adidas.com/on/demandware.static/-/Sites-adidas-US-Library/en_US/v/sitemap/product/adidas-US-en-us-product.xml']
 
 sitemapList.forEach((url) => {
   grabLink(url)

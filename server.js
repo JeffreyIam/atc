@@ -3,12 +3,11 @@ let http = require('http')
 let bodyParser = require('body-parser')
 let request = require('request')
 let webdriver = require('selenium-webdriver')
-let solvedCapRes = []
 let app = express()
+let solvedCapRes = []
+let port = 1337
 
 app.use(bodyParser.json())
-
-let port = 1337
 
 app.listen(port, () => {
   console.log('listening on port: ' + port)
@@ -16,8 +15,11 @@ app.listen(port, () => {
 
 app.post('/key', (req, res) => {
   sitekeySolution = req.body.key
-  solvedCapRes.push(sitekeySolution)
-  res.json('sent!')
+  if(sitekeySolution.length > 0) {
+    solvedCapRes.push(sitekeySolution)
+    solvedCapRes.push({key: sitekeySolution, time: 0})
+    res.json(sitekeySolution)
+  }
 })
 
 app.post('/id', function(req, res) {
@@ -26,17 +28,30 @@ app.post('/id', function(req, res) {
   let sku = req.body.sku
   console.log(solvedCapRes.length)
   for (let i = 0; i < solvedCapRes.length; i++) {
-    let captcha = solvedCapRes[0]
-    solvedCapRes.shift()
+    let captcha = solvedCapRes[i].key
     let driver = new webdriver.Builder().forBrowser('chrome').build()
     addToCart(pid, qty, sku, captcha, driver)
   }
+  solvedCapRes = []
 })
 
 app.get('/key', (req, res) => {
   let response = solvedCapRes
-  res.json(solvedCapRes)
+  res.json(solvedCapRes.length)
 })
+
+setInterval(() => {
+  if(solvedCapRes.length > 0) {
+    for(var i = 0; i < solvedCapRes.length; i++){
+      if(solvedCapRes[i].time < 119) {
+        solvedCapRes[i].time ++
+      } else {
+        solvedCapRes.splice(i,1)
+        i--
+      }
+    }
+  }
+ },1000)
 
 const addToCart = (pid, qty, sku, captcha, driver) => {
 
@@ -55,7 +70,7 @@ const addToCart = (pid, qty, sku, captcha, driver) => {
     headers: {
       'content-type': 'application/x-www-form-urlencoded'
     }
-  };
+  }
 
   request(option, (error, res, body) => {
     if (error) {
