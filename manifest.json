@@ -12,13 +12,6 @@
       ],
       "js": ["jquery-1.12.1.js", "createCart.js"],
       "css": ["bootstrap.css"]
-    },
-    {
-      "matches": [
-        "*://*.example.net/*"
-      ],
-      "js": ["jquery-1.12.1.js", "addToCart.js"],
-      "css": ["bootstrap.css"]
     }
   ],
   "background": {

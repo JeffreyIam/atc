@@ -32,8 +32,8 @@ function changeView(sitekey, fun) {
 
     xhr.open("POST", "http://127.0.0.1:1337/id", true)
     xhr.setRequestHeader("Content-type", "application/json")
-    xhr.send(JSON.stringify(params))
     console.log('sent ' + params)
+    xhr.send(JSON.stringify(params))
   })
 
   document.querySelector('#createTable').addEventListener('click', () => {

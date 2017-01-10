@@ -77,20 +77,22 @@ const addToCart = (pid, qty, sku, captcha, driver) => {
       console.log(error)
     } else {
       let allCookies = res.headers['set-cookie']
-      driver.get('http://www.adidas.com/404')
-      driver.manage().deleteAllCookies()
-      for (let i = 0; i < allCookies.length; i++) {
-        let name = allCookies[i].split(';')[0].split('=')[0]
-        let value = allCookies[i].split(';')[0].split('=')[1]
-        let domain = 'www.adidas.com'
-        let path = '/'
-        driver.manage().addCookie({
-          name: name,
-          value: value,
-          domain: domain,
-          path: path
-        })
-      }
+      driver.get('https://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
+        driver.manage().deleteAllCookies()
+        for (let i = 0; i < allCookies.length; i++) {
+          let name = allCookies[i].split(';')[0].split('=')[0]
+          if(name !== 'dwsid'){
+            let value = allCookies[i].split(';')[0].split('=')[1]
+            let domain = allCookies[i].indexOf('Domain') > -1 ? '.adidas.com' : 'www.adidas.com'
+            let path = '/'
+            driver.manage().addCookie({
+              name: name,
+              value: value,
+              domain: domain,
+              path: path
+            })
+          }
+        }
       driver.get('https://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
     }
   })
