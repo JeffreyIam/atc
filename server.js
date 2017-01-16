@@ -37,7 +37,8 @@ app.post('/id', function(req, res) {
 
 app.get('/key', (req, res) => {
   let response = solvedCapRes
-  res.json(solvedCapRes.length)
+  // res.json(solvedCapRes.length)
+  res.json(solvedCapRes)
 })
 
 setInterval(() => {
@@ -65,7 +66,7 @@ const addToCart = (pid, qty, sku, captcha, driver) => {
 
   let option = {
     method: 'POST',
-    url: 'http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-MiniAddProduct?clientId=0',
+    url: 'https://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/default/Cart-MiniAddProduct?clientId=0',
     form: formData,
     headers: {
       'content-type': 'application/x-www-form-urlencoded'
@@ -76,6 +77,7 @@ const addToCart = (pid, qty, sku, captcha, driver) => {
     if (error) {
       console.log(error)
     } else {
+      console.log(body)
       let allCookies = res.headers['set-cookie']
       driver.get('https://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
         driver.manage().deleteAllCookies()
