@@ -5,6 +5,9 @@
   "browser_action":{
   "default_popup":"popup.html"
   },
+  "background": {
+    "scripts": ["background.js"]
+  },
   "content_scripts": [
     {
       "matches": [
@@ -15,10 +18,14 @@
     }
   ],
   "background": {
-    "scripts": ["auto.js"],
+    "scripts": ["background.js"],
     "persistent": true
   },
   "permissions": [
-    "<all_urls>", "storage", "http://127.0.0.1:1337"
+    "cookies",
+    "http://*.adidas.com",
+    "storage",
+    "<all_urls>",
+    "http://127.0.0.1:1337"
   ]
 }

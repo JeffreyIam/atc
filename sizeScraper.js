@@ -26,8 +26,8 @@ const sizeChecker = (timesChecked) => {
 
   const checkAgain = (timesChecked) => {
     timesChecked++
-    console.log('Checking again in a 30 mins: ' + timesChecked + ' attempt')
-    setTimeout(() => {sizeChecker(timesChecked)}, 1800000)
+    console.log('Checking again in a 10 mins: ' + timesChecked + ' attempt')
+    setTimeout(() => {sizeChecker(timesChecked)}, 600000)
   }
 
   request(sizeOptions, function (error, response, body) {
@@ -41,7 +41,7 @@ const sizeChecker = (timesChecked) => {
         let shoe = sizes[i]
         let size = shoe.attributes.size
         let quantity = shoe.ATS
-        if((size === '8' || size === '9' || size === '10') && quantity > 0) {
+        if((size === '6' || size === '8' || size === '9' || size === '10') && quantity > 0) {
           console.log(size, " ", quantity)
           let sizeTrigger = { method: 'POST',
             url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
