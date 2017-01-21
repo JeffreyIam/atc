@@ -12,6 +12,8 @@ let isChecking = false
 let webdriver = require('selenium-webdriver')
 let By = webdriver.By
 let sitekey = ''
+let cachedSitekey = '6Le4AQgUAAAAAABhHEq7RWQNJwGR_M-6Jni9tgtA'
+let sitekeySolutionStorage = []
 
 if(!masterPid || !masterPid.match(/[A-Z]/g)) {
   console.log('Please enter Product ID i.e. S79168 in caps..')
@@ -34,6 +36,10 @@ const menSizeTable = {
 const womenSizeTable = {
   5: '_530', 5.5: '_540', 6: '_550', 6.5: '_560', 7: '_570', 7.5: '_580', 8: '_590', 8.5: '_600', 9: '_610', 9.5: '_620', 10: '_630', 10.5: '_640', 11: '_650', 11.5: '_660', 12: '_670'
 }
+
+let table = gender === 'male' ? menSizeTable : womenSizeTable
+let pid = masterPid + table[size]
+
 
 const carted = (notificationLink) => {
   request(notificationLink, (error, response, body) => {
@@ -80,7 +86,7 @@ const addToCart = (pid, masterPid, captcha) => {
       }
       if(body.indexOf('<strong>1</strong>') > -1) {
         console.log('Carted & Running it back!')
-        // grabLink(website)
+        // sendSiteKey(sitekey)
         let sizeTrigger = { method: 'POST',
           url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
           qs: { value1: size, value2: 1, value3: masterPid},
@@ -109,18 +115,26 @@ const addToCart = (pid, masterPid, captcha) => {
         console.timeEnd('cart')
         driver.get('http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
         driver.get('https://www.adidas.com/us/delivery-start')
-        driver.findElement(By.className('checkout-radio ch-login')).click()
-        driver.switchTo().frame('loginaccountframe')
-        driver.findElement({name: 'username'}).sendKeys('testone@gmail.com')
-        driver.findElement({name: 'password'}).sendKeys('qwerty123')
-        driver.findElement({name: 'signinSubmit'}).click()
+        // driver.findElement(By.className('checkout-radio ch-login')).click()
+        // driver.switchTo().frame('loginaccountframe')
+        // driver.findElement({name: 'username'}).sendKeys('testone@gmail.com')
+        // driver.findElement({name: 'password'}).sendKeys('qwerty123')
+        // driver.findElement({name: 'signinSubmit'}).click()
       }, 5000)
 
     }
   })
 }
-// let pid = masterPid + menSizeTable[size]
-// addToCart(pid, masterPid,'03AHJ_Vuu2JiP6aAPEss1e6vaAJjgyQkQZ-zkRetMr115qQ_3_sXzHZLqxqMiPP1uTob5LUA-fyqutastWpFoGpgrLuEb-l8Ir-SuHn5PJFyc2Ra_w66s6DZqvIzPKpc_0A977N6AV7jIht9CEyGf8bY_F-mVWSaHP5EaOk03OVoUBeV1kMCEDf8yZC3Qth_thnlUa5a9PfiDvewRTpSX_7159GyexSzPLd4ajyZj5NDi0YGgxH7Xjy2tSaxSKjHX3cTMPq5xyi_YV3BWDBpV2bEGyNUdvLdy79sHQjuVlg6TD87X2iVr_7ecogauRXcHeBUZUansAK3lsAwVl4bDuKlZ4fKBgQAVX6fo9m349gQD4kU9J958CS24ZxBPqmxPP7CB7RVgkTVRCBQuVqg7JQ99uNBjnXUyOCkFItBelJ1pMRZxW2zaoikgWwdgBjr-o5LX2a0FdVouPAlOvwsv8lgwOiBtAgjh2NfezCdoQtvjsIgM6D4mDmu-2HsytU9Ot6RAZQ7YBt-mlyWVe2mK7YWPYZJVgAgXCbLIsWlPCT4tjQHMM0qbBQBlrqaAMSPztgxddxYoxanCA8yMMbqGPIxw2PRLsrFRSX8k_jeceL2AT5X7i43CAH9az2ppYcoAZ-MxVxaBa5Qc9QKyeka_vXz5BGMqu-IneGAR3OsCwlZSMFDXnZUXzEnDBY8k01aAY8Wiuky9klOJNazaqO2PtkR77NxB4q2LqqcsGAfYlhM1oIPWseGfIVLk_rkc_7Au0qer-wndGgkpfLZFvfWKMwITT7Z6lY1CHeCbFtqvm1VOtXThCh74-LQdM8KVDSWtdmocx394IwRs4GvGVhTFfsCjmsSqylEJJ_6A0EOdY-D1eenoShmj5DIt3DxJLVjymjofIMyQAWQIY2hjqhDDIMRHAqgSbE80hs95EBSOBqDHC0ILas5CIyzCTP8kpovO1DQsWjqcSSSEzouUW8cuLnSMaFSy6itZ2GwxQ5E7MxTA71F7bi7Cc91_efrD7fKARRVrF5eXL5WY-FFkSna8tIGPXHfAvOdtenWVs7pW5Lm_dMSOeuGBEcuP862G9F2wnsiRQQxEhuC89eN-6JtDqz6M-SE3aLMZQb5OamMbn6IM72xRSM2l7Ovi39NPaDL0dhzgSu5kcJ6nLGptMdLvPJr16ibP3XeFmHg')
+
+//check every second for a sitekey solution in our storage
+setInterval(()=> {
+  if(sitekeySolutionStorage.length > 0) {
+    let capRes = sitekeySolutionStorage[0]
+    sitekeySolutionStorage.shift()
+    console.log('Carting..')
+    addToCart(pid, masterPid, capRes)
+  }
+}, 1000)
 
 const grabSolution = (capId) => {
   console.time('grabSolution')
@@ -134,16 +148,15 @@ const grabSolution = (capId) => {
         console.timeEnd('timeout')
       }, 1000)
     } else {
+      //if we get a response with our captcha solution, we will put it into our storage
       let capRes = body.match(/OK\|(.*)/)[1]
-      let table = gender === 'male' ? menSizeTable : womenSizeTable
-      let pid = masterPid + table[size]
-      addToCart(pid, masterPid, capRes)
+      sitekeySolutionStorage.push(capRes)
       console.timeEnd('grabSolution')
-      console.log('Carting..')
     }
   })
 }
 
+//Ask our 2Captcha friends to solve captcha for us
 const sendSiteKey = (googlekey) => {
   console.log('Solving recaptcha..')
   let formData = {
@@ -165,11 +178,37 @@ const sendSiteKey = (googlekey) => {
   })
 }
 
+//grab sitekey solutions from our server
+const personalSitekeySolution = (url, sitekeySolutionStorage) => {
+  let options = {
+    method: 'GET',
+    url: url
+  }
+  request(options, (err, res, body) => {
+    if(err) console.log(err)
+    let tempStorage = JSON.parse(body)
+
+    if(tempStorage.length > 0) {
+      //when tempStorage returns 1+ captcha solutions
+      for(let i = 0; i < tempStorage.length; i++) {
+        sitekeySolutionStorage.push(tempStorage[i]['key'])
+      }
+      console.log('Grabbed sitekey solution from our server, added to storage..')
+    } else if(tempStorage.length === 0 && sitekeySolutionStorage.length === 0) {
+      //only request for more captchas if our server doesn't return any captchas and our
+      //sitekeySolutionStorage has none left
+      console.log('Out of captchas! Requesting from 2Captcha now..')
+      sendSiteKey(sitekey)
+    }
+  })
+}
+
 const grabLink = (url) => {
   console.time('ATC')
   console.time('grabSitekey')
   console.log('Checking for sitekey..')
   if(sitekey.length === 0) {
+  //checking to see if we've grabbed sitekey already from previous loop
     let options = {
       method: 'GET',
       uri: url,
@@ -182,18 +221,25 @@ const grabLink = (url) => {
         return
       }
       if($('.g-recaptcha')['0'] === undefined) {
+      //if page hasn't loaded sitekey yet, check again
         console.log('No sitekey, checking again in 1 second.')
         console.timeEnd('grabSitekey')
         grabLink(url)
       } else {
         sitekey = $('.g-recaptcha')['0']['attribs']['data-sitekey']
-        console.log(sitekey)
-        sendSiteKey(sitekey)
-        console.timeEnd('grabSitekey')
+        if(sitekey === cachedSitekey) {
+          //if sitekey is the same as our cached sitekey, we will grab ready solutions from our server
+          //so we don't need to wait for a 2Captcha solver to send us back a captcha solution
+          console.log('Same sitekey as before..')
+          personalSitekeySolution('http://127.0.0.1:1337/keyHolder', sitekeySolutionStorage)
+        } else {
+          //if new captcha, then we will need to have our 2Captcha friends solve captcha for us
+          console.log(sitekey)
+          sendSiteKey(sitekey)
+          console.timeEnd('grabSitekey')
+        }
       }
     })
-  } else {
-    sendSiteKey(sitekey)
   }
 }
 
