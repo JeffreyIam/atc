@@ -1,10 +1,10 @@
 const request = require('request')
 const cheerio = require('cheerio');
 const secret = require('./keys.js')
-// let website = 'http://www.adidas.com/us/harden-vol.-1-shoes/CG4940.html'
+let website = 'http://www.adidas.com/us/pp-ace-tango-17-plus-purecontrol-turf-shoes/BY9164.html'
 // let website = 'http://www.adidas.com/us/pp-ace-tango-17-plus-purecontrol-turf-shoes/BY9164.html'
 // let website = 'http://www.adidas.com/us/ultraboost-shoes/S80682.html'
-let website = 'http://www.adidas.com/us/ultra-boost-uncaged-shoes/BA9797.html'
+// let website = 'http://www.adidas.com/us/ultra-boost-uncaged-shoes/BA9797.html'
 let masterPid = process.argv[2]
 const size = process.argv[3]
 const gender = process.argv[4]
@@ -14,6 +14,7 @@ let By = webdriver.By
 let sitekey = ''
 let cachedSitekey = '6Le4AQgUAAAAAABhHEq7RWQNJwGR_M-6Jni9tgtA'
 let sitekeySolutionStorage = []
+let capIdStorage = []
 
 if(!masterPid || !masterPid.match(/[A-Z]/g)) {
   console.log('Please enter Product ID i.e. S79168 in caps..')
@@ -86,7 +87,7 @@ const addToCart = (pid, masterPid, captcha) => {
       }
       if(body.indexOf('<strong>1</strong>') > -1) {
         console.log('Carted & Running it back!')
-        // sendSiteKey(sitekey)
+        // sendSiteKey(sitekey, capIdStorage)
         let sizeTrigger = { method: 'POST',
           url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
           qs: { value1: size, value2: 1, value3: masterPid},
@@ -127,8 +128,8 @@ const addToCart = (pid, masterPid, captcha) => {
 }
 
 //check every second for a sitekey solution in our storage
-setInterval(()=> {
-  if(sitekeySolutionStorage.length > 0) {
+setInterval(() => {
+  while(sitekeySolutionStorage.length > 0) {
     let capRes = sitekeySolutionStorage[0]
     sitekeySolutionStorage.shift()
     console.log('Carting..')
@@ -150,15 +151,24 @@ const grabSolution = (capId) => {
     } else {
       //if we get a response with our captcha solution, we will put it into our storage
       let capRes = body.match(/OK\|(.*)/)[1]
+      console.log('Grabbed sitekey - added to storage')
       sitekeySolutionStorage.push(capRes)
       console.timeEnd('grabSolution')
     }
   })
 }
 
+// check for capId in storage to check for it..
+setInterval(() => {
+  while(capIdStorage.length > 0) {
+    let capId = capIdStorage[0]
+    capIdStorage.shift()
+    grabSolution(capId)
+  }
+}, 1000)
+
 //Ask our 2Captcha friends to solve captcha for us
-const sendSiteKey = (googlekey) => {
-  console.log('Solving recaptcha..')
+const sendSiteKey = (googlekey, capIdStorage) => {
   let formData = {
     key: secret.twoCaptcha.key,
     method: 'userrecaptcha',
@@ -174,7 +184,7 @@ const sendSiteKey = (googlekey) => {
     if(err) console.log(err)
     let capId = body.match(/[0-9]+/)[0]
     console.log(capId)
-    grabSolution(capId)
+    capIdStorage.push(capId)
   })
 }
 
@@ -198,9 +208,17 @@ const personalSitekeySolution = (url, sitekeySolutionStorage) => {
       //only request for more captchas if our server doesn't return any captchas and our
       //sitekeySolutionStorage has none left
       console.log('Out of captchas! Requesting from 2Captcha now..')
-      sendSiteKey(sitekey)
+      asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 2)
     }
   })
+}
+
+const asyncDoTimes = (f, times) => {
+  let p = Promise.resolve()
+  for (let i = 0; i < times; i++) {
+    p = p.then(f)
+  }
+  return p
 }
 
 const grabLink = (url) => {
@@ -215,16 +233,18 @@ const grabLink = (url) => {
     }
     request(options, (err, res, body) => {
       var $ = cheerio.load(body)
-      if (err) {
+      if(err) {
         console.log(err)
         console.log('Link Error - Please check your url: ' + url + ' / or you got IP banned')
         return
       }
       if($('.g-recaptcha')['0'] === undefined) {
       //if page hasn't loaded sitekey yet, check again
-        console.log('No sitekey, checking again in 1 second.')
+        console.log('No sitekey, checking again in 10 seconds.')
         console.timeEnd('grabSitekey')
-        grabLink(url)
+        setTimeout(() => {
+          grabLink(url)
+        }, 10000)
       } else {
         sitekey = $('.g-recaptcha')['0']['attribs']['data-sitekey']
         if(sitekey === cachedSitekey) {
@@ -235,8 +255,8 @@ const grabLink = (url) => {
         } else {
           //if new captcha, then we will need to have our 2Captcha friends solve captcha for us
           console.log(sitekey)
-          sendSiteKey(sitekey)
           console.timeEnd('grabSitekey')
+          asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 2)
         }
       }
     })
