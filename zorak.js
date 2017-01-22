@@ -1,11 +1,8 @@
 const request = require('request')
 const cheerio = require('cheerio');
 const secret = require('./keys.js')
-// let website = 'http://www.adidas.com/us/crazy-explosive-shoes/BB8345.html'
-// let website = 'http://www.adidas.com/us/pp-ace-tango-17-plus-purecontrol-turf-shoes/BY9164.html'
-// let website = 'http://www.adidas.com/us/ultraboost-shoes/S80682.html'
-// let website = 'http://www.adidas.com/us/ultra-boost-uncaged-shoes/BA9797.html'
-let website = 'http://www.adidas.com/us/white-mountaineering-campus-80s-shoes/BA7516.html'
+// let website = 'http://www.adidas.com/us/white-mountaineering-campus-80s-shoes/BA7516.html'
+let website = 'http://www.adidas.com/us/pp-ace-tango-17-plus-purecontrol-turf-shoes/BY9164.html'
 let masterPid = process.argv[2]
 const size = process.argv[3]
 const gender = process.argv[4]
@@ -18,6 +15,7 @@ let cachedSitekey = '6Le4AQgUAAAAAABhHEq7RWQNJwGR_M-6Jni9tgtA'
 let sitekeySolutionStorage = []
 let capIdStorage = []
 let gCookie = ''
+// let isHmacPresent = false
 
 if(!masterPid || !masterPid.match(/[A-Z]/g)) {
   console.log('Please enter Product ID i.e. S79168 in caps..')
@@ -58,12 +56,13 @@ const carted = (notificationLink) => {
   })
 }
 
+//if grabHMAC takes too long to get our hmac.. we may need to make our setinterval watch for
+//hmac flag before trying to cart
 const grabHMAC = (url) => {
   var options = { method: 'GET',
     url: url,
     headers:
-     {
-       'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36' } };
+     { 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36' } };
 
   request(options, function (error, response, body) {
     if (error) throw new Error(error);
@@ -74,6 +73,7 @@ const grabHMAC = (url) => {
         let hmac = cookies[i].split(';')
         hmac.splice(1,1)
         gCookie = hmac.join(';')
+        // isHmacPresent = true
         console.log(gCookie)
       }
     }
@@ -104,7 +104,6 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
 
   request(option, (error, res, body) => {
     console.log(res.statusCode)
-    // console.log(res)
     console.timeEnd('ATC')
     if (error) {
       console.log(error)
@@ -121,7 +120,6 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
       }
       if(body.indexOf('<strong>1</strong>') > -1) {
         console.log('Carted & Running it back!')
-        // sendSiteKey(sitekey, capIdStorage)
         let sizeTrigger = { method: 'POST',
           url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
           qs: { value1: size, value2: 1, value3: masterPid},
@@ -155,12 +153,14 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
         })
         driver.switchTo().frame('loginaccountframe')
         driver.wait(until.elementLocated(By.name('username')), 10 * 1000).then(()=> {
-          let username = signInAccounts[0]['id']
-          let password = signInAccounts[0]['pw']
-          signInAccounts.shift()
-          driver.findElement({name: 'username'}).sendKeys(username)
-          driver.findElement({name: 'password'}).sendKeys(password)
-          driver.findElement({name: 'signinSubmit'}).click()
+          if(signInAccounts.length > 0){
+            let username = signInAccounts[0]['id']
+            let password = signInAccounts[0]['pw']
+            signInAccounts.shift()
+            driver.findElement({name: 'username'}).sendKeys(username)
+            driver.findElement({name: 'password'}).sendKeys(password)
+            driver.findElement({name: 'signinSubmit'}).click()
+          }
         })
       }, 5000)
 
@@ -170,7 +170,8 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
 
 //check every second for a sitekey solution in our storage
 setInterval(() => {
-  while(sitekeySolutionStorage.length > 0 && gCookie.length > 0) {
+  while(sitekeySolutionStorage.length > 0) {
+    //maybe and if gCookie.length > 0 ...
     let capRes = sitekeySolutionStorage[0]
     sitekeySolutionStorage.shift()
     console.log('Carting..')
@@ -229,7 +230,7 @@ const sendSiteKey = (googlekey, capIdStorage) => {
   })
 }
 
-//grab sitekey solutions from our server
+//grab sitekey solutions from our server..requires our server to be up and running otherwise will break..
 const personalSitekeySolution = (url, sitekeySolutionStorage) => {
   let options = {
     method: 'GET',
