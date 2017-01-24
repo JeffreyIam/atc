@@ -1,21 +1,20 @@
 const request = require('request')
 const cheerio = require('cheerio');
 const secret = require('./keys.js')
-// let website = 'http://www.adidas.com/us/white-mountaineering-campus-80s-shoes/BA7516.html'
-let website = 'http://www.adidas.com/us/pp-ace-tango-17-plus-purecontrol-turf-shoes/BY9164.html'
-let masterPid = process.argv[2]
-const size = process.argv[3]
-const gender = process.argv[4]
-let isChecking = false
+let config = require('./config.json')
+let website = config.task.page
+let masterPid = config.task.masterPid
+let size = config.task.size
+let gender = config.task.gender
+let signInAccounts = config.task.signInAccountsInfo
+let cachedSitekey = config.task.cachedSitekey
 let webdriver = require('selenium-webdriver')
 let By = webdriver.By
 let until = webdriver.until
 let sitekey = ''
-let cachedSitekey = '6Le4AQgUAAAAAABhHEq7RWQNJwGR_M-6Jni9tgtA'
 let sitekeySolutionStorage = []
 let capIdStorage = []
 let gCookie = ''
-// let isHmacPresent = false
 
 if(!masterPid || !masterPid.match(/[A-Z]/g)) {
   console.log('Please enter Product ID i.e. S79168 in caps..')
@@ -39,12 +38,15 @@ const womenSizeTable = {
   5: '_530', 5.5: '_540', 6: '_550', 6.5: '_560', 7: '_570', 7.5: '_580', 8: '_590', 8.5: '_600', 9: '_610', 9.5: '_620', 10: '_630', 10.5: '_640', 11: '_650', 11.5: '_660', 12: '_670'
 }
 
-const signInAccounts = [
-  {id: 'testone@gmail.com', pw: 'qwerty123'}, {id: 'bingsun8@gmail.com', pw: 'bingdotcom8'}
-]
-
 let table = gender === 'male' ? menSizeTable : womenSizeTable
 let pid = masterPid + table[size]
+
+console.log('website: ', website)
+console.log('masterPid: ', masterPid)
+console.log('size: ', size)
+console.log('gender: ', gender)
+console.log('cached site key: ', cachedSitekey)
+console.log('signInAccounts: ', signInAccounts)
 
 
 const carted = (notificationLink) => {
