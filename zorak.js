@@ -1,5 +1,6 @@
 const request = require('request')
 const cheerio = require('cheerio');
+const chalk = require('chalk')
 const secret = require('./keys.js')
 let config = require('./config.json')
 let website = config.task.page
@@ -48,7 +49,6 @@ console.log('gender: ', gender)
 console.log('cached site key: ', cachedSitekey)
 console.log('signInAccounts: ', signInAccounts)
 
-
 const carted = (notificationLink) => {
   request(notificationLink, (error, response, body) => {
     if(error){
@@ -83,6 +83,7 @@ const grabHMAC = (url) => {
 }
 
 grabHMAC(website)
+// grabHMAC('http://www.adidas.com/us/white-mountaineering-nmd-trail-shoes/BA7518.html')
 
 const addToCart = (pid, masterPid, captcha, gCookie) => {
   console.time('cart')
@@ -105,13 +106,15 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
   }
 
   request(option, (error, res, body) => {
+    let username = 'n/a'
+    let password = 'n/a'
     console.log(res.statusCode)
     console.timeEnd('ATC')
     if (error) {
       console.log(error)
     } else {
       if(body.indexOf('<strong>0</strong>') > -1) {
-        console.log('Could not cart.')
+        console.log(chalk.red.bgYellow.bold('Could not cart.'))
         console.timeEnd('cart')
         let sizeTrigger = { method: 'POST',
           url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
@@ -120,11 +123,16 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
         carted(sizeTrigger)
         return
       }
+      if(signInAccounts.length > 0){
+        username = signInAccounts[0]['id']
+        password = signInAccounts[0]['pw']
+        signInAccounts.shift()
+      }
       if(body.indexOf('<strong>1</strong>') > -1) {
-        console.log('Carted & Running it back!')
+        console.log(chalk.cyan.bgWhite.bold('Carted & Running it back!'))
         let sizeTrigger = { method: 'POST',
           url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
-          qs: { value1: size, value2: 1, value3: masterPid},
+          qs: { value1: size, value2: masterPid, value3: username },
         }
         carted(sizeTrigger)
       }
@@ -155,14 +163,14 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
         })
         driver.switchTo().frame('loginaccountframe')
         driver.wait(until.elementLocated(By.name('username')), 10 * 1000).then(()=> {
-          if(signInAccounts.length > 0){
-            let username = signInAccounts[0]['id']
-            let password = signInAccounts[0]['pw']
-            signInAccounts.shift()
+          // if(signInAccounts.length > 0){
+            // let username = signInAccounts[0]['id']
+            // let password = signInAccounts[0]['pw']
+            // signInAccounts.shift()
             driver.findElement({name: 'username'}).sendKeys(username)
             driver.findElement({name: 'password'}).sendKeys(password)
             driver.findElement({name: 'signinSubmit'}).click()
-          }
+          // }
         })
       }, 5000)
 
