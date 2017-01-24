@@ -17,24 +17,29 @@ const grabLink = (url) => {
         return
       }
       let items = result.urlset['url']
-      let currentIteration = 0
-      let checkForHMAC = setInterval(() => {
-        let link = items[currentIteration].loc[0]
-        request(link, (err, res, body) => {
-          console.log(link, currentIteration)
-          let allCookies = JSON.stringify(res.headers['set-cookie'])
-          if(allCookies.indexOf('gceeqs') > -1) {
-            console.log(chalk.red('******************* found HMAC cookie @ ' +  link + '*******************'))
-          }
-          if(currentIteration === items.length) {
-            clearIterval(checkForHMAC)
-          }
-          if(body.indexOf('blocked') > -1) {
-            throw 'blocked!!  @  ' + link
-          }
-        })
-        currentIteration += 1
-      }, 2500)
+      let currentIteration = 353
+      // let checkForHMAC = setInterval(() => {
+        while(currentIteration < items.length) {
+          let link = items[currentIteration].loc[0]
+          request(link, (err, res, body) => {
+            // console.log(link, currentIteration)
+            if(res === undefined || body.indexOf('blocked' || res.headers === undefined) > -1) {
+              // throw 'blocked!!  @  ' + link
+              console.log(link + ' blocked / no cookies..onto the next one..')
+            } else {
+              console.log(link)
+              let allCookies = JSON.stringify(res.headers['set-cookie'])
+              if(allCookies !== undefined && allCookies.indexOf('gceeqs') > -1) {
+                console.log(chalk.red('******************* found HMAC cookie @ ' +  link + '*******************'))
+              }
+              // if(currentIteration === items.length) {
+              //   clearIterval(checkForHMAC)
+              // }
+            }
+          })
+          currentIteration += 1
+        }
+      // }, 500)
     })
   })
 }
