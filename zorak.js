@@ -15,7 +15,7 @@ let until = webdriver.until
 let sitekey = ''
 let sitekeySolutionStorage = []
 let capIdStorage = []
-let gCookie = ''
+let gCookie = {hmac: "", timer: 0}
 
 if(!masterPid || !masterPid.match(/[A-Z]/g)) {
   console.log('Please enter Product ID i.e. S79168 in caps..')
@@ -61,6 +61,7 @@ const carted = (notificationLink) => {
 //if grabHMAC takes too long to get our hmac.. we may need to make our setinterval watch for
 //hmac flag before trying to cart
 const grabHMAC = (url) => {
+
   var options = { method: 'GET',
     url: url,
     headers:
@@ -74,15 +75,30 @@ const grabHMAC = (url) => {
       if(cookies[i].indexOf('gceeqs') > -1) {
         let hmac = cookies[i].split(';')
         hmac.splice(1,1)
-        gCookie = hmac.join(';')
-        // isHmacPresent = true
-        console.log(gCookie)
+        gCookie.hmac = hmac.join(';')
+        gCookie.timer = 1
+        console.log('gCookie created..' + JSON.stringify(gCookie))
+        console.time('grabHMAC')
       }
     }
   })
 }
 
 grabHMAC(website)
+
+setInterval(()=> {
+  if(gCookie.hmac.length > 0 && gCookie.timer < 540) {
+    gCookie.timer++
+  }
+  if(gCookie.hmac.length > 0 && gCookie.timer >= 540) {
+    //refresh our HMAC as it will only last 9-10 mins..
+    grabHMAC(website)
+    console.timeEnd('grabHMAC')
+    console.log('Refreshing HMAC ', gCookie)
+  }
+}, 1000)
+
+// grabHMAC(website)
 // grabHMAC('http://www.adidas.com/us/white-mountaineering-nmd-trail-shoes/BA7518.html')
 
 const addToCart = (pid, masterPid, captcha, gCookie) => {
@@ -98,7 +114,7 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
     method: 'POST',
     url: 'http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/default/Cart-MiniAddProduct?clientId=0',
     headers: {
-      'Cookie': gCookie,
+      'Cookie': gCookie.hmac,
       'content-type': 'application/x-www-form-urlencoded',
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36'
     },
@@ -158,22 +174,16 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
         console.timeEnd('cart')
         driver.get('http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
         driver.get('https://www.adidas.com/us/delivery-start')
-        driver.wait(until.elementLocated(By.className('checkout-radio ch-login')), 10 * 1000).then(()=> {
+        driver.wait(until.elementLocated(By.className('checkout-radio ch-login')), 50 * 10000000).then(()=> {
           driver.findElement(By.className('checkout-radio ch-login')).click()
         })
         driver.switchTo().frame('loginaccountframe')
-        driver.wait(until.elementLocated(By.name('username')), 10 * 1000).then(()=> {
-          // if(signInAccounts.length > 0){
-            // let username = signInAccounts[0]['id']
-            // let password = signInAccounts[0]['pw']
-            // signInAccounts.shift()
-            driver.findElement({name: 'username'}).sendKeys(username)
-            driver.findElement({name: 'password'}).sendKeys(password)
-            driver.findElement({name: 'signinSubmit'}).click()
-          // }
+        driver.wait(until.elementLocated(By.name('username')), 50 * 10000000).then(()=> {
+          driver.findElement({name: 'username'}).sendKeys(username)
+          driver.findElement({name: 'password'}).sendKeys(password)
+          driver.findElement({name: 'signinSubmit'}).click()
         })
       }, 5000)
-
     }
   })
 }
@@ -203,7 +213,7 @@ const grabSolution = (capId) => {
     } else {
       //if we get a response with our captcha solution, we will put it into our storage
       let capRes = body.match(/OK\|(.*)/)[1]
-      console.log('Grabbed sitekey - added to storage')
+      console.log('Grabbed sitekey from 2captcha - added to storage')
       sitekeySolutionStorage.push(capRes)
       console.timeEnd('grabSolution')
     }
@@ -240,6 +250,35 @@ const sendSiteKey = (googlekey, capIdStorage) => {
   })
 }
 
+const checkServerForSolution = (url, sitekeySolutionStorage, sitekey) => {
+  let options = {
+    method: 'GET',
+    url: url
+  }
+  request(options, (err, res, body) => {
+    if(err) console.log(err)
+    let tempStorage = JSON.parse(body)
+    //only push to our storage if sitekeys matches
+    for(let i = 0; i < tempStorage.length; i++) {
+      if(tempStorage[i]['sitekey'] === sitekey) {
+        sitekeySolutionStorage.push(tempStorage[i]['key'])
+        console.log('Sitekey matches that of our server\'s..added to storage..')
+      } else {
+        console.log('Sitekey does not match our servers key..')
+      }
+    }
+  })
+}
+
+//check our servers every 2 seconds if our sitekeySolutionStorage is empty and we have a valid sitekey
+//this incase I can solve the captcha faster than 2Captcha..
+setInterval(()=> {
+  if(sitekeySolutionStorage.length === 0 && sitekey.length > 0) {
+    console.log('checking server for solution..')
+    checkServerForSolution('http://127.0.0.1:1337/keyHolder', sitekeySolutionStorage, sitekey)
+  }
+}, 2000)
+
 //grab sitekey solutions from our server..requires our server to be up and running otherwise will break..
 const personalSitekeySolution = (url, sitekeySolutionStorage) => {
   let options = {
@@ -253,14 +292,19 @@ const personalSitekeySolution = (url, sitekeySolutionStorage) => {
     if(tempStorage.length > 0) {
       //when tempStorage returns 1+ captcha solutions
       for(let i = 0; i < tempStorage.length; i++) {
-        sitekeySolutionStorage.push(tempStorage[i]['key'])
+        //only add to our storage if sitekey matches our server's key
+        if(tempStorage[i]['sitekey'] === sitekey) {
+          sitekeySolutionStorage.push(tempStorage[i]['key'])
+          console.log('Sitekey matches that of our server\'s..added to storage..')
+        } else {
+          console.log('Sitekey does not match our servers key..')
+        }
       }
-      console.log('Grabbed sitekey solution from our server, added to storage..')
     } else if(tempStorage.length === 0 && sitekeySolutionStorage.length === 0) {
       //only request for more captchas if our server doesn't return any captchas and our
       //sitekeySolutionStorage has none left
-      console.log('Out of captchas! Requesting 2 from 2Captcha now..')
-      asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 2)
+      console.log('Out of captchas! Requesting 1 from 2Captcha now..')
+      asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 1)
     }
   })
 }
@@ -271,6 +315,24 @@ const asyncDoTimes = (f, times) => {
     p = p.then(f)
   }
   return p
+}
+
+const updateSiteKey = (sitekey) => {
+  let formData = {
+    sitekey: sitekey
+  }
+  let options = { method: 'POST',
+  url: 'http://127.0.0.1:1337/newcaptcha',
+  headers:
+   { 'cache-control': 'no-cache',
+     'content-type': 'application/json' },
+  form: formData
+  };
+
+  request(options, (err, res, body) => {
+    if(err) console.log(err)
+    console.log('updated sitekey and opening new page now..solve quickly!!')
+  })
 }
 
 const grabLink = (url) => {
@@ -286,32 +348,45 @@ const grabLink = (url) => {
     request(options, (err, res, body) => {
       var $ = cheerio.load(body)
       if(err) {
-        console.log(err)
-        console.log('Link Error - Please check your url: ' + url + ' / or you got IP banned')
-        return
-      }
-      if(body.indexOf('blocked') > -1) {
-        throw 'Youve been blocked'
-      }
-      if($('.g-recaptcha')['0'] === undefined) {
+        // console.log(err)
+        console.log(chalk.red.bgYellow('Link Error - Please check your url: ' + url + ' / or you got IP banned'))
+        // console.log(chalk.red.bgYellow('res'))
+        setTimeout(() => {
+          grabLink(url)
+        }, 1000)
+      } else if(body === undefined ){
+        console.log(chalk.yellow('No body..'))
+        setTimeout(() => {
+          grabLink(url)
+        }, 1000)
+      } else if(body.indexOf('blocked') > -1) {
+        console.log(chalk.yellow('Youve been blocked'))
+        setTimeout(() => {
+          grabLink(url)
+        }, 1000)
+      } else if($('.g-recaptcha')['0'] === undefined) {
       //if page hasn't loaded sitekey yet, check again
-        console.log('No sitekey, checking again in 10 seconds.')
+        console.log('No sitekey, checking again in 1 second.')
         console.timeEnd('grabSitekey')
         setTimeout(() => {
           grabLink(url)
-        }, 10000)
+        }, 1000)
       } else {
         sitekey = $('.g-recaptcha')['0']['attribs']['data-sitekey']
         if(sitekey === cachedSitekey) {
           //if sitekey is the same as our cached sitekey, we will grab ready solutions from our server
           //so we don't need to wait for a 2Captcha solver to send us back a captcha solution
-          console.log('Same sitekey as before..')
+          updateSiteKey(sitekey)
+          console.log(chalk.cyan.bgWhite('Same sitekey as before..'))
+          console.timeEnd('grabSitekey')
           personalSitekeySolution('http://127.0.0.1:1337/keyHolder', sitekeySolutionStorage)
         } else {
-          //if new captcha, then we will need to have our 2Captcha friends solve captcha for us
-          console.log(sitekey)
+          //if new captcha, then we will do a post request to open a new sitekey page for us to solve.. and we also
+          //need to have our 2Captcha friends solve captcha for us
+          updateSiteKey(sitekey)
+          console.log(chalk.cyan.bgWhite(sitekey))
           console.timeEnd('grabSitekey')
-          asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 2)
+          // asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 1)
         }
       }
     })
