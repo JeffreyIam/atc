@@ -66,8 +66,6 @@ const sizeChecker = () => {
   }
 
   request(sizeOptions, function (error, response, body) {
-    console.log(error, response, body)
-    // if (error) throw error
     if(response === undefined && response.body.indexOf('variations') === -1){
       console.log('No sizes available at all, checking again.')
       checkAgain(timesChecked)
@@ -75,24 +73,21 @@ const sizeChecker = () => {
       let sizes = JSON.parse(response.body).variations.variants
       for(var i = 0; i < sizes.length; i++){
         let shoe = sizes[i]
-        let size = shoe.attributes.size
+        let shoeSize = shoe.attributes.size
         let inStock = shoe.avLevels.IN_STOCK
         let quantity = shoe.ATS
         let preview = shoe.avLevels.PREVIEW
         let avStatus = shoe.avStatus
-
-        console.log(chalk.cyan.bold(size) + " : " + chalk.green.bold(quantity) + " " + avStatus)
-        if((size === '6') && inStock > 1) {
+        console.log(chalk.cyan.bold(shoeSize) + " : " + chalk.green.bold(quantity) + " " + avStatus)
+        if(sitekey.length > 0) {
+          //After grabbing sitekey - we only want to see stock #s..
+          //so we stop running sizeChecker by setting the flag to false
+          //we set a fresh HMAC
           grabHMAC(website)
-          console.log(chalk.cyan.bold("Found!!"))
-          let sizeTrigger = { method: 'POST',
-            url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
-            qs: { value1: size, value2: inStock, value3: 'http://www.adidas.com/us/eqt-support-93-17-shoes/BB1234.html'},
-          }
-          request(sizeTrigger, (err, res, body) => {
-            console.log('sent IFTTT notification')
-          })
-          updateSiteKey(sitekey)
+          // oos = false
+        } else if(shoeSize === size && inStock > 0) {
+          //first iteration we want to grab a fresh HMAC and also grab sitekey
+          grabLink(website)
           oos = false
         }
       }
@@ -101,7 +96,7 @@ const sizeChecker = () => {
   })
 }
 // for checking size stock
-// sizeChecker()
+sizeChecker()
 
 const carted = (notificationLink) => {
   request(notificationLink, (error, response, body) => {
@@ -131,7 +126,6 @@ const grabHMAC = (url) => {
         gCookie.hmac = hmac.join(';')
         gCookie.timer = 1
         console.log('gCookie created..' + JSON.stringify(gCookie))
-        console.time('grabHMAC')
       }
     }
   })
@@ -226,7 +220,8 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
 
         }, 5000)
       } else {
-        console.log(chalk.red.bgYellow.bold('Could not cart.'))
+        console.log(chalk.red.bgYellow.bold('Could not cart..checking for sizes again..'))
+        sizeChecker()
         return
       }
     }
@@ -319,7 +314,6 @@ const checkServerForSolution = (url, sitekeySolutionStorage, sitekey) => {
 //this incase I can solve the captcha faster than 2Captcha..
 setInterval(()=> {
   if(sitekeySolutionStorage.length === 0 && sitekey.length > 0) {
-    // console.log('checking server for solution..')
     checkServerForSolution('http://127.0.0.1:1337/keyHolder', sitekeySolutionStorage, sitekey)
   }
 }, 1000)
@@ -402,9 +396,7 @@ const grabLink = (url) => {
     request(options, (err, res, body) => {
       var $ = cheerio.load(body)
       if(err) {
-        // console.log(err)
         console.log(chalk.red.bgYellow('Link Error - Please check your url: ' + url + ' / or you got IP banned'))
-        // console.log(chalk.red.bgYellow('res'))
         setTimeout(() => {
           grabLink(url)
         }, 1000)
@@ -431,6 +423,7 @@ const grabLink = (url) => {
           //if sitekey is the same as our cached sitekey, we will grab ready solutions from our server
           //so we don't need to wait for a 2Captcha solver to send us back a captcha solution
           updateSiteKey(sitekey)
+          sizeChecker()
           console.log(chalk.cyan.bgWhite('Same sitekey as before..'))
           console.timeEnd('grabSitekey')
           personalSitekeySolution('http://127.0.0.1:1337/keyHolder', sitekeySolutionStorage)
@@ -438,6 +431,7 @@ const grabLink = (url) => {
           //if new captcha, then we will do a post request to open a new sitekey page for us to solve.. and we also
           //need to have our 2Captcha friends solve captcha for us
           updateSiteKey(sitekey)
+          sizeChecker()
           console.log(chalk.cyan.bgWhite(sitekey))
           console.timeEnd('grabSitekey')
           asyncDoTimes(()=> sendSiteKey(sitekey, capIdStorage), 1)
@@ -446,6 +440,3 @@ const grabLink = (url) => {
     })
   }
 }
-
-grabLink(website)
-// http://www.adidas.com/us/eqt-support-93-17-shoes/BB1234.html
