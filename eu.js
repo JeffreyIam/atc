@@ -2,7 +2,7 @@ const request = require('request')
 const cheerio = require('cheerio');
 const chalk = require('chalk')
 const secret = require('./keys.js')
-let config = require('./config.json')
+let config = require('./config-eu.json')
 let website = config.task.page
 let masterPid = config.task.masterPid
 let size = config.task.size
@@ -16,7 +16,6 @@ let sitekey = ''
 let sitekeySolutionStorage = []
 let capIdStorage = []
 let gCookie = {hmac: "", timer: 0}
-let oos = true
 
 if(!masterPid || !masterPid.match(/[A-Z]/g)) {
   console.log('Please enter Product ID i.e. S79168 in caps..')
@@ -49,59 +48,6 @@ console.log('size: ', size)
 console.log('gender: ', gender)
 console.log('cached site key: ', cachedSitekey)
 console.log('signInAccounts: ', signInAccounts)
-
-let sizeOptions = { method: 'GET',
-  url: 'http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Product-GetVariants',
-  qs: { pid: pid },
-  headers: { 'cache-control': 'no-cache' }
-}
-
-const sizeChecker = () => {
-
-  const checkAgain = () => {
-    if(oos === true) {
-      console.log('Checking again in 10 seconds')
-      setTimeout(() => {sizeChecker()}, 10000)
-    }
-  }
-
-  request(sizeOptions, function (error, response, body) {
-    console.log(error, response, body)
-    // if (error) throw error
-    if(response === undefined && response.body.indexOf('variations') === -1){
-      console.log('No sizes available at all, checking again.')
-      checkAgain(timesChecked)
-    } else {
-      let sizes = JSON.parse(response.body).variations.variants
-      for(var i = 0; i < sizes.length; i++){
-        let shoe = sizes[i]
-        let size = shoe.attributes.size
-        let inStock = shoe.avLevels.IN_STOCK
-        let quantity = shoe.ATS
-        let preview = shoe.avLevels.PREVIEW
-        let avStatus = shoe.avStatus
-
-        console.log(chalk.cyan.bold(size) + " : " + chalk.green.bold(quantity) + " " + avStatus)
-        if((size === '6') && inStock > 1) {
-          grabHMAC(website)
-          console.log(chalk.cyan.bold("Found!!"))
-          let sizeTrigger = { method: 'POST',
-            url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
-            qs: { value1: size, value2: inStock, value3: 'http://www.adidas.com/us/eqt-support-93-17-shoes/BB1234.html'},
-          }
-          request(sizeTrigger, (err, res, body) => {
-            console.log('sent IFTTT notification')
-          })
-          updateSiteKey(sitekey)
-          oos = false
-        }
-      }
-      checkAgain()
-    }
-  })
-}
-// for checking size stock
-// sizeChecker()
 
 const carted = (notificationLink) => {
   request(notificationLink, (error, response, body) => {
@@ -151,6 +97,9 @@ setInterval(()=> {
   }
 }, 1000)
 
+// grabHMAC(website)
+// grabHMAC('http://www.adidas.com/us/white-mountaineering-nmd-trail-shoes/BA7518.html')
+
 const addToCart = (pid, masterPid, captcha, gCookie) => {
   console.time('cart')
   let formData = {
@@ -160,9 +109,11 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
     masterPid: masterPid,
     ajax: 'true'
   }
+  //EU http://www.adidas.co.uk/on/demandware.store/Sites-adidas-GB-Site/en_GB/Cart-MiniAddProduct
+  //US http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/default/Cart-MiniAddProduct?clientId=0
   let option = {
     method: 'POST',
-    url: 'http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/default/Cart-MiniAddProduct?clientId=0',
+    url: 'http://www.adidas.co.uk/on/demandware.store/Sites-adidas-GB-Site/en_GB/Cart-MiniAddProduct',
     headers: {
       'Cookie': gCookie.hmac,
       'content-type': 'application/x-www-form-urlencoded',
@@ -179,6 +130,16 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
     if (error) {
       console.log(error)
     } else {
+      if(body.indexOf('<strong>0</strong>') > -1) {
+        console.log(chalk.red.bgYellow.bold('Could not cart.'))
+        console.timeEnd('cart')
+        let sizeTrigger = { method: 'POST',
+          url: 'https://maker.ifttt.com/trigger/Found_size/with/key/' + secret.ifttt.key,
+          qs: { value1: 'Couldnt cart', value2: ':(', value3: ':\'('},
+        }
+        carted(sizeTrigger)
+        return
+      }
       if(signInAccounts.length > 0){
         username = signInAccounts[0]['id']
         password = signInAccounts[0]['pw']
@@ -191,44 +152,41 @@ const addToCart = (pid, masterPid, captcha, gCookie) => {
           qs: { value1: size, value2: masterPid, value3: username },
         }
         carted(sizeTrigger)
-        let allCookies = res.headers['set-cookie']
-        let driver = new webdriver.Builder().forBrowser('chrome').build()
-        driver.get('http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
-        setTimeout(() => {
-          driver.manage().deleteAllCookies()
-          for (let i = 0; i < allCookies.length; i++) {
-            let name = allCookies[i].split(';')[0].split('=')[0]
-            if(name !== 'sid' && name !== 'dwsid' &&  name !== 'dwsecuretoken_e23325cdedf446c9a41915343e601cde') {
-              let value = allCookies[i].split(';')[0].split('=')[1]
-              let domain = allCookies[i].indexOf('Domain') > -1 ? '.adidas.com' : 'www.adidas.com'
-              let path = '/'
-              driver.manage().addCookie({
-                name: name,
-                value: value,
-                domain: domain,
-                path: path
-              })
-            }
-          }
-          console.timeEnd('cart')
-          driver.get('http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
-          driver.get('https://www.adidas.com/us/delivery-start')
-          driver.get('https://www.adidas.com/us/delivery-start')
-          driver.wait(until.elementLocated(By.className('checkout-radio ch-login')), 50 * 10000000).then(()=> {
-            driver.findElement(By.className('checkout-radio ch-login')).click()
-          })
-          driver.switchTo().frame('loginaccountframe')
-          driver.wait(until.elementLocated(By.name('username')), 50 * 10000000).then(()=> {
-            driver.findElement({name: 'username'}).sendKeys(username)
-            driver.findElement({name: 'password'}).sendKeys(password)
-            driver.findElement({name: 'signinSubmit'}).click()
-          })
-
-        }, 5000)
-      } else {
-        console.log(chalk.red.bgYellow.bold('Could not cart.'))
-        return
       }
+      let allCookies = res.headers['set-cookie']
+      let driver = new webdriver.Builder().forBrowser('chrome').build()
+      driver.get('http://www.adidas.co.uk/on/demandware.store/Sites-adidas-GB-Site/en_GB/Cart-Show')
+      // driver.get('http://www.adidas.com/on/demandware.store/Sites-adidas-US-Site/en_US/Cart-Show')
+      setTimeout(() => {
+        driver.manage().deleteAllCookies()
+        for (let i = 0; i < allCookies.length; i++) {
+          let name = allCookies[i].split(';')[0].split('=')[0]
+          if(name !== 'sid' && name !== 'dwsid' &&  name !== 'dwsecuretoken_e23325cdedf446c9a41915343e601cde') {
+            let value = allCookies[i].split(';')[0].split('=')[1]
+            // let domain = allCookies[i].indexOf('Domain') > -1 ? '.adidas.com' : 'www.adidas.com'
+            let domain = allCookies[i].indexOf('Domain') > -1 ? '.adidas.co.uk' : 'www.adidas.co.uk'
+            let path = '/'
+            driver.manage().addCookie({
+              name: name,
+              value: value,
+              domain: domain,
+              path: path
+            })
+          }
+        }
+        console.timeEnd('cart')
+        driver.get('http://www.adidas.co.uk/on/demandware.store/Sites-adidas-GB-Site/en_GB/Cart-Show')
+        // driver.get('https://www.adidas.co.uk/delivery-start')
+        // driver.wait(until.elementLocated(By.className('checkout-radio ch-login')), 50 * 10000000).then(()=> {
+        //   driver.findElement(By.className('checkout-radio ch-login')).click()
+        // })
+        // driver.switchTo().frame('loginaccountframe')
+        // driver.wait(until.elementLocated(By.name('username')), 50 * 10000000).then(()=> {
+        //   driver.findElement({name: 'username'}).sendKeys(username)
+        //   driver.findElement({name: 'password'}).sendKeys(password)
+        //   driver.findElement({name: 'signinSubmit'}).click()
+        // })
+      }, 5000)
     }
   })
 }
@@ -280,7 +238,7 @@ const sendSiteKey = (googlekey, capIdStorage) => {
     key: secret.twoCaptcha.key,
     method: 'userrecaptcha',
     googlekey: googlekey,
-    pageurl: 'http://www.adidas.com/us/'
+    pageurl: 'http://www.adidas.co.uk/'
   }
   let options = {
     method: 'POST',
@@ -319,10 +277,10 @@ const checkServerForSolution = (url, sitekeySolutionStorage, sitekey) => {
 //this incase I can solve the captcha faster than 2Captcha..
 setInterval(()=> {
   if(sitekeySolutionStorage.length === 0 && sitekey.length > 0) {
-    // console.log('checking server for solution..')
+    console.log('checking server for solution..')
     checkServerForSolution('http://127.0.0.1:1337/keyHolder', sitekeySolutionStorage, sitekey)
   }
-}, 1000)
+}, 2000)
 
 const asyncDoTimes = (f, times) => {
   let p = Promise.resolve()
@@ -390,13 +348,8 @@ const grabLink = (url) => {
   //checking to see if we've grabbed sitekey already from previous loop
     let options = {
       method: 'GET',
-      url: url,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
-        'Upgrade-Insecure-Requests': 1,
-        'Host': 'www.adidas.com',
-        'Cache-Control': 'max-age=0',
-        'Connection': 'keep-alive'
+      uri: url,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36'
       }
     }
     request(options, (err, res, body) => {
@@ -448,4 +401,3 @@ const grabLink = (url) => {
 }
 
 grabLink(website)
-// http://www.adidas.com/us/eqt-support-93-17-shoes/BB1234.html

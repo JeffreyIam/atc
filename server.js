@@ -20,7 +20,6 @@ app.listen(port, () => {
 app.post('/key', (req, res) => {
   sitekeySolution = req.body.key
   sitekey = req.body.sitekey
-  console.log(sitekeySolution, sitekey)
   if(sitekeySolution.length > 0) {
     solvedCapRes.push({sitekey: sitekey, key: sitekeySolution, time: 0})
     numOfCapRes = solvedCapRes.length

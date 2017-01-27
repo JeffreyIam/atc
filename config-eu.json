@@ -1,0 +1,18 @@
+{
+  "task":{
+    "page": "http://www.adidas.co.uk/eqt-support-ultra-cny-shoes/BA7777.html",
+    "masterPid": "BA7777",
+    "size": "10",
+    "gender": "male",
+    "cachedSitekey": "6Le4AQgUAAAAAABhHEq7RWQNJwGR_M-6Jni9tgtA",
+    "signInAccountsInfo": [
+      {"id": "testone@gmail.com", "pw": "qwerty123"}, {"id": "testtwo@gmail.com", "pw": "qwerty123"}
+    ]
+  },
+  "proxy": {
+    "active": false,
+    "host": "",
+    "username": "",
+    "password": ""
+  }
+}
