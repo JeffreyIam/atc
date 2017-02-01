@@ -1,16 +1,13 @@
 let express = require('express')
-let http = require('http')
 let bodyParser = require('body-parser')
-let request = require('request')
-let webdriver = require('selenium-webdriver')
 let app = express()
 let solvedCapRes = []
 let port = 1337
 let numOfCapRes = 0
 
 app.use(bodyParser.urlencoded({
-    extended: true
-}));
+  extended: true
+}))
 app.use(bodyParser.json())
 
 app.listen(port, () => {
@@ -18,9 +15,9 @@ app.listen(port, () => {
 })
 
 app.post('/key', (req, res) => {
-  sitekeySolution = req.body.key
-  sitekey = req.body.sitekey
-  if(sitekeySolution.length > 0) {
+  let sitekeySolution = req.body.key
+  let sitekey = req.body.sitekey
+  if (sitekeySolution.length > 0) {
     solvedCapRes.push({sitekey: sitekey, key: sitekeySolution, time: 0})
     numOfCapRes = solvedCapRes.length
     res.json(sitekeySolution)
@@ -35,7 +32,6 @@ app.post('/newcaptcha', (req, res) => {
 })
 
 app.get('/key', (req, res) => {
-  let response = solvedCapRes
   res.json(solvedCapRes.length)
 })
 
@@ -46,19 +42,18 @@ app.get('/keyHolder', (req, res) => {
 })
 
 setInterval(() => {
-  if(solvedCapRes.length > 0) {
-    for(var i = 0; i < numOfCapRes; i++){
-      if(solvedCapRes[i].time < 119) {
+  if (solvedCapRes.length > 0) {
+    for (var i = 0; i < numOfCapRes; i++) {
+      if (solvedCapRes[i].time < 119) {
         solvedCapRes[i].time++
       } else {
-        solvedCapRes.splice(i,1)
+        solvedCapRes.splice(i, 1)
         numOfCapRes--
         i--
       }
     }
   }
- }, 1000)
-
+}, 1000)
 
 // app.post('/id', function(req, res) {
 //   let productUrl = req.body.productUrl
@@ -75,7 +70,6 @@ setInterval(() => {
 //     checkProductLive(productUrl, pid, qty, sku)
 //   }
 // })
-
 
 // const checkProductLive = (productUrl, pid, qty, sku) => {
 //   console.time('check')

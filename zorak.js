@@ -1,7 +1,6 @@
 const request = require('request')
 const cheerio = require('cheerio')
 const chalk = require('chalk')
-const queryString = require('querystring')
 const secret = require('./keys.js')
 let config = require('./config.json')
 let website = config.task.page
@@ -68,7 +67,7 @@ const sizeChecker = () => {
   }
 
   request(sizeOptions, function (error, response, body) {
-    if(err) console.log(err)
+    if (error) console.log(error)
     if (response === undefined && response.body.indexOf('variations') === -1) {
       console.log('No sizes available at all, checking again.')
     } else {
@@ -247,7 +246,7 @@ const grabSolution = (capId) => {
   console.time('timeout')
   let url = 'http://2captcha.com/res.php?key=' + secret.twoCaptcha.key + '&action=get&id=' + capId
   request(url, (err, res, body) => {
-    if(err) console.log(err)
+    if (err) console.log(err)
     console.log(body)
     if (body[2] !== '|') {
       setTimeout(() => {
